@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efecto Doppler – Cuaderno Interactivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --blue: #1a4480;
+    --cyan: #00c2d4;
+    --pink: #e91e8c;
+    --gold: #f5c842;
+    --white: #f0f4ff;
+    --paper: #faf7f0;
+    --paper2: #f3efe4;
+    --ink: #1a1a2e;
+    --shadow: rgba(0,0,0,0.35);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #1a1a2e;
+    background-image: radial-gradient(ellipse at 20% 50%, #0d2b4a 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 20%, #1a0a2e 0%, transparent 50%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── BOOK WRAPPER ── */
+  #book-scene {
+    perspective: 2000px;
+    width: 860px;
+    height: 580px;
+    position: relative;
+  }
+
+  #book {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+  }
+
+  /* ── PAGES ── */
+  .page {
+    display: none;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px 16px 16px 4px;
+    box-shadow: 6px 6px 30px var(--shadow), -2px 0 10px rgba(0,0,0,.2);
+    overflow: hidden;
+    position: absolute;
+    top: 0; left: 0;
+    background: var(--paper);
+    animation: pageIn .45s cubic-bezier(.4,0,.2,1);
+  }
+  .page.active { display: flex; }
+  .page.prev { display: flex; animation: pageOut .45s cubic-bezier(.4,0,.2,1) forwards; }
+
+  @keyframes pageIn {
+    from { opacity:0; transform: rotateY(-12deg) translateX(30px); }
+    to   { opacity:1; transform: rotateY(0deg) translateX(0); }
+  }
+  @keyframes pageOut {
+    from { opacity:1; transform: rotateY(0deg); }
+    to   { opacity:0; transform: rotateY(12deg) translateX(-30px); }
+  }
+
+  /* SPIRAL BINDING */
+  .spiral {
+    position: absolute;
+    left: -14px; top: 0; width: 28px; height: 100%;
+    z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-around;
+    padding: 20px 0;
+    pointer-events: none;
+  }
+  .spiral-ring {
+    width: 22px; height: 14px;
+    border: 3px solid #888;
+    border-radius: 50%;
+    background: #ccc;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+
+  /* TWO-COLUMN LAYOUT */
+  .page-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+  }
+  .page-left, .page-right {
+    padding: 32px 28px;
+    overflow-y: auto;
+    height: 100%;
+  }
+  .page-left { border-right: 1px solid #ddd; background: var(--paper); }
+  .page-right { background: var(--paper2); }
+
+  /* scrollbar */
+  .page-left::-webkit-scrollbar, .page-right::-webkit-scrollbar { width: 4px; }
+  .page-left::-webkit-scrollbar-thumb, .page-right::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+  /* ── COVER ── */
+  .cover {
+    background: linear-gradient(135deg, #0d1b2a 0%, #1a3a5c 50%, #0d2b4a 100%);
+    color: var(--white);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content:'';
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,194,212,.07) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,194,212,.07) 40px);
+  }
+  .cover-wave {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    border: 1px solid rgba(0,194,212,.2);
+    animation: pulse 3s ease-in-out infinite;
+  }
+  .cover-wave:nth-child(1) { width: 200px; height: 200px; animation-delay: 0s; }
+  .cover-wave:nth-child(2) { width: 350px; height: 350px; animation-delay: .6s; }
+  .cover-wave:nth-child(3) { width: 500px; height: 500px; animation-delay: 1.2s; }
+  .cover-wave:nth-child(4) { width: 700px; height: 700px; animation-delay: 1.8s; }
+  @keyframes pulse {
+    0%,100% { opacity:.15; transform: translate(-50%,-50%) scale(1); }
+    50%      { opacity:.4;  transform: translate(-50%,-50%) scale(1.04); }
+  }
+  .cover-content { position: relative; z-index: 2; }
+  .cover-badge {
+    background: var(--pink);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 18px;
+  }
+  .cover-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.4rem;
+    font-weight: 700;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 10px;
+  }
+  .cover-sub {
+    font-family: 'Space Mono', monospace;
+    color: var(--cyan);
+    font-size: .85rem;
+    letter-spacing: .2em;
+    margin-bottom: 28px;
+  }
+  .cover-author {
+    font-size: .9rem;
+    color: rgba(255,255,255,.6);
+    margin-top: 22px;
+  }
+  .cover-author span { color: var(--gold); font-weight: 600; }
+  .cover-toc {
+    margin-top: 28px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(0,194,212,.2);
+    border-radius: 12px;
+    padding: 16px 24px;
+    text-align: left;
+    font-size: .78rem;
+    color: rgba(255,255,255,.75);
+    columns: 2; column-gap: 24px;
+  }
+  .cover-toc-item { padding: 3px 0; }
+  .cover-toc-item span { color: var(--cyan); margin-right: 6px; font-family: 'Space Mono',monospace; }
+
+  /* ── TYPOGRAPHY ── */
+  .section-number {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    color: var(--pink);
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.55rem;
+    color: var(--ink);
+    font-weight: 700;
+    margin-bottom: 14px;
+    line-height: 1.2;
+  }
+  .section-title::after {
+    content: '';
+    display: block;
+    width: 40px; height: 3px;
+    background: var(--pink);
+    margin-top: 8px;
+    border-radius: 2px;
+  }
+  p { font-size: .88rem; line-height: 1.7; color: #333; margin-bottom: 10px; }
+  strong { color: var(--ink); }
+
+  .callout {
+    background: linear-gradient(135deg, #e8f4ff, #f0faff);
+    border-left: 4px solid var(--cyan);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: .85rem;
+    color: #1a3a5c;
+    font-style: italic;
+  }
+  .callout-tip {
+    background: #fff8e7;
+    border-left: 4px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: .82rem;
+    color: #5a4a00;
+  }
+
+  /* FORMULA BOX */
+  .formula-box {
+    background: linear-gradient(135deg, var(--blue), #0d2b4a);
+    color: #fff;
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-align: center;
+    margin: 12px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    letter-spacing: .05em;
+    box-shadow: 0 4px 15px rgba(26,68,128,.4);
+  }
+  .formula-box.pink { background: linear-gradient(135deg, #c0135a, #8b0050); }
+  .formula-box.small { font-size: .85rem; }
+  .formula-label {
+    font-size: .65rem;
+    letter-spacing: .12em;
+    opacity: .7;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* SIGN RULES */
+  .sign-rules { list-style: none; margin: 8px 0; }
+  .sign-rules li {
+    font-size: .83rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sign-rules li::before { content: '▸'; color: var(--pink); font-size: .7rem; }
+  .sign-rules li.pos { background: #e6fff5; color: #006040; }
+  .sign-rules li.neg { background: #fff0f5; color: #8b0030; }
+
+  /* PAGE NUMBER */
+  .page-num {
+    position: absolute;
+    bottom: 12px; right: 18px;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    color: #aaa;
+  }
+
+  /* ── SIMULATORS ── */
+  /* AMBULANCE SIM */
+  .sim-road {
+    background: linear-gradient(180deg, #1a2a1a, #2d4d2d);
+    border-radius: 10px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    height: 120px;
+    margin: 10px 0;
+  }
+  .road-line {
+    position: absolute;
+    bottom: 30px; left: 0; right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, #fff 0, #fff 20px, transparent 20px, transparent 40px);
+    opacity: .4;
+  }
+  .ambulance-car {
+    position: absolute;
+    bottom: 34px;
+    font-size: 2rem;
+    transition: left 0.05s linear;
+    filter: drop-shadow(0 0 8px rgba(255,100,100,.7));
+  }
+  .person-icon {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    font-size: 1.8rem;
+  }
+  .wave-rings {
+    position: absolute;
+    pointer-events: none;
+    top: 50%;
+  }
+  .wave-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .sim-controls {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0;
+  }
+  .sim-btn {
+    background: var(--pink);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: .05em;
+  }
+  .sim-btn:hover { background: #c0135a; transform: translateY(-1px); }
+  .sim-btn.secondary { background: var(--blue); }
+  .sim-btn.secondary:hover { background: #0d2b5c; }
+
+  .sim-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    color: #555;
+    margin-bottom: 2px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--pink); }
+  .slider-val {
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    color: var(--ink);
+    min-width: 55px;
+    text-align: right;
+  }
+  .freq-display {
+    background: var(--ink);
+    color: var(--cyan);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: .82rem;
+    margin: 8px 0;
+    display: flex; gap: 14px;
+    flex-wrap: wrap;
+  }
+  .freq-item span { display: block; font-size: .6rem; opacity: .6; }
+
+  /* WAVE SIM CANVAS */
+  .wave-canvas-wrap {
+    background: #0d1b2a;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  canvas { display: block; }
+
+  /* MACH SIM */
+  .mach-canvas-wrap {
+    background: #000818;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+
+  /* ── NAV ── */
+  #nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    z-index: 200;
+  }
+  .nav-btn {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.15);
+    color: #fff;
+    padding: 10px 26px;
+    border-radius: 30px;
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .1em;
+    cursor: pointer;
+    transition: all .2s;
+    backdrop-filter: blur(8px);
+  }
+  .nav-btn:hover { background: rgba(0,194,212,.2); border-color: var(--cyan); }
+  .nav-btn:disabled { opacity: .3; cursor: default; }
+  #page-indicator {
+    font-family: 'Space Mono', monospace;
+    color: rgba(255,255,255,.5);
+    font-size: .72rem;
+    min-width: 80px;
+    text-align: center;
+  }
+  .nav-dots {
+    display: flex; gap: 6px;
+  }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .nav-dot.active { background: var(--cyan); transform: scale(1.3); }
+
+  /* FIGURE CAPTION */
+  .fig-caption {
+    font-size: .7rem;
+    color: #888;
+    text-align: center;
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  /* RIGHT PANEL INFOGRAPHIC */
+  .info-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .info-card h4 {
+    font-family: 'Playfair Display', serif;
+    color: var(--blue);
+    font-size: .95rem;
+    margin-bottom: 8px;
+  }
+  .info-card p { font-size: .8rem; margin-bottom: 0; }
+
+  /* AMBULANCE WAVE DEMO */
+  #amb-canvas { width: 100%; }
+
+  /* STEP SOLUTION */
+  .step {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .step-num {
+    background: var(--pink);
+    color: #fff;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step p { margin: 0; font-size: .82rem; }
+
+  /* APPLICATION CARDS */
+  .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .app-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px;
+    border-top: 3px solid var(--cyan);
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  }
+  .app-card .icon { font-size: 1.6rem; margin-bottom: 6px; }
+  .app-card h4 { font-size: .8rem; color: var(--blue); margin-bottom: 4px; font-weight: 600; }
+  .app-card p { font-size: .75rem; color: #555; margin: 0; }
+
+  @media (max-width:900px) {
+    #book-scene { width: 96vw; height: auto; min-height: 70vh; perspective: 1200px; }
+    .page-inner { grid-template-columns: 1fr; }
+    .page-left { border-right: none; border-bottom: 1px solid #ddd; max-height: 50%; }
+    .page-right { max-height: 50%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="book-scene">
+  <div id="book">
+
+    <!-- SPIRAL -->
+    <div class="spiral" id="spiral"></div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 0 · COVER
+    ════════════════════════════════════════ -->
+    <div class="page cover active" id="p0">
+      <div class="cover-wave"></div>
+      <div class="cover-wave"></div>
+      <div class="cover-wave"></div>
+      <div class="cover-wave"></div>
+      <div class="cover-content">
+        <div class="cover-badge">🔬 Física Interactiva · Ondas y Sonido</div>
+        <div class="cover-title">EFECTO<br>DOPPLER</div>
+        <div class="cover-sub">CUADERNO INTERACTIVO</div>
+        <div style="color:rgba(255,255,255,.5);font-size:.8rem;">con simuladores en tiempo real</div>
+        <div class="cover-author">Presentado por <span>Tiara Santana</span></div>
+        <div class="cover-toc">
+          <div class="cover-toc-item"><span>01</span> Definición e Historia</div>
+          <div class="cover-toc-item"><span>02</span> Análisis Geométrico</div>
+          <div class="cover-toc-item"><span>03</span> Expresión Universal</div>
+          <div class="cover-toc-item"><span>04</span> Problema: Ambulancia</div>
+          <div class="cover-toc-item"><span>05</span> Barcos y Corriente</div>
+          <div class="cover-toc-item"><span>06</span> Ondas de Choque</div>
+          <div class="cover-toc-item"><span>07</span> Número de Mach</div>
+          <div class="cover-toc-item"><span>08</span> Avión Supersónico</div>
+          <div class="cover-toc-item"><span>09</span> Aplicaciones</div>
+          <div class="cover-toc-item"><span>10</span> Simulador Interactivo</div>
+        </div>
+      </div>
+      <div class="page-num">PORTADA</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 1 · DEFINICIÓN E HISTORIA
+    ════════════════════════════════════════ -->
+    <div class="page" id="p1">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 01</div>
+          <div class="section-title">¿Qué es el Efecto Doppler?</div>
+          <p>El <strong>Efecto Doppler</strong> es el aparente cambio de frecuencia de una onda producido por el <strong>movimiento relativo</strong> de la fuente respecto a su observador.</p>
+          <p>Fue propuesto en <strong>1842</strong> por el físico austríaco <strong>Christian Andreas Doppler</strong> en su tratado <em>"Sobre el color de la luz en estrellas binarias y otros astros"</em>.</p>
+          <div class="callout">
+            "¿Has notado cómo cambia el tono de la sirena de una ambulancia cuando pasa por tu lado? ¡Eso es el Efecto Doppler en acción!"
+          </div>
+          <p>En este cuaderno estudiaremos el caso especial donde las direcciones de las velocidades <strong>v<sub>o</sub></strong> (observador) y <strong>v<sub>f</sub></strong> (fuente) coinciden con la recta que los une.</p>
+          <div class="info-card" style="margin-top:12px;">
+            <h4>📌 Convenio de Signos</h4>
+            <ul style="font-size:.8rem;padding-left:16px;color:#333;line-height:1.8;">
+              <li>Sentido <strong>positivo</strong> de v<sub>o</sub> y v<sub>f</sub>: desde el observador hacia la fuente</li>
+              <li>La velocidad <em>c</em> de propagación se considera siempre <strong>positiva</strong></li>
+            </ul>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="info-card">
+            <h4>🕰 Línea del Tiempo</h4>
+            <div style="position:relative;padding-left:20px;border-left:3px solid var(--cyan);margin-top:8px;">
+              <div style="margin-bottom:12px;">
+                <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--pink);">1842</div>
+                <div style="font-size:.8rem;">Christian Doppler publica su teoría sobre el cambio de color de la luz estelar.</div>
+              </div>
+              <div style="margin-bottom:12px;">
+                <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--pink);">1845</div>
+                <div style="font-size:.8rem;">Buys Ballot verifica el efecto con músicos en un tren en movimiento.</div>
+              </div>
+              <div style="margin-bottom:12px;">
+                <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--pink);">1868</div>
+                <div style="font-size:.8rem;">William Huggins aplica el efecto a la medición de velocidades estelares.</div>
+              </div>
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--pink);">HOY</div>
+                <div style="font-size:.8rem;">Radares, ecografías, GPS y astronomía usan el efecto Doppler diariamente.</div>
+              </div>
+            </div>
+          </div>
+          <!-- Mini wave vis -->
+          <div class="wave-canvas-wrap">
+            <canvas id="histCanvas" width="370" height="140"></canvas>
+          </div>
+          <div class="fig-caption">Representación geométrica del Efecto Doppler</div>
+        </div>
+      </div>
+      <div class="page-num">01</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 2 · ANÁLISIS GEOMÉTRICO
+    ════════════════════════════════════════ -->
+    <div class="page" id="p2">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 02</div>
+          <div class="section-title">Análisis Geométrico</div>
+          <p>En la figura, un observador se encuentra a la izquierda de una fuente de ondas. El sentido positivo va de izquierda a derecha, por tanto v<sub>o</sub> como v<sub>f</sub> son positivas.</p>
+          <p>En el instante <em>t = 0</em>, la fuente está en el punto <strong>E</strong>; en el instante <em>t &gt; 0</em>, en el punto <strong>F</strong>. La circunferencia exterior representa la onda emitida en <em>t = 0</em>, que se propaga radialmente con velocidad <em>c</em>.</p>
+          <div class="formula-box small">
+            <div class="formula-label">Distancias</div>
+            FA = c·t + v<sub>f</sub>·t = (c + v<sub>f</sub>)t<br>
+            FB = c·t − v<sub>f</sub>·t = (c − v<sub>f</sub>)t
+          </div>
+          <p>La longitud de onda percibida <strong>λ'</strong> es la distancia FA dividida entre el número de frentes emitidos <em>n = f<sub>f</sub> · t</em>:</p>
+          <div class="formula-box">
+            <div class="formula-label">Longitud de onda percibida</div>
+            λ' = FA/n = (c + v<sub>f</sub>)t / (f<sub>f</sub>·t) = (c + v<sub>f</sub>) / f<sub>f</sub>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="wave-canvas-wrap">
+            <canvas id="geoCanvas" width="370" height="200"></canvas>
+          </div>
+          <div class="fig-caption">Modelo geométrico de propagación con fuente móvil</div>
+          <div class="info-card" style="margin-top:12px;">
+            <h4>🔍 Frecuencia observada</h4>
+            <p>Para un observador <strong>O</strong> con velocidad de aproximación <strong>c + v<sub>o</sub></strong> respecto a las ondas, la frecuencia f<sub>o</sub> es:</p>
+          </div>
+          <div class="formula-box">
+            <div class="formula-label">Frecuencia observada</div>
+            f<sub>o</sub> = velocidad/λ' = ((c + v<sub>o</sub>) / (c + v<sub>f</sub>)) · f<sub>f</sub>
+          </div>
+          <p style="font-size:.78rem;color:#555;">Esta expresión relaciona la frecuencia emitida (f<sub>f</sub>) con la frecuencia observada (f<sub>o</sub>) según los movimientos de fuente y observador.</p>
+        </div>
+      </div>
+      <div class="page-num">02</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 3 · EXPRESIÓN UNIVERSAL
+    ════════════════════════════════════════ -->
+    <div class="page" id="p3">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 03</div>
+          <div class="section-title">Expresión Universal</div>
+          <p>La fórmula general que engloba <em>todos los casos</em> del Efecto Doppler es:</p>
+          <div class="formula-box" style="font-size:1.15rem;">
+            <div class="formula-label">Fórmula General</div>
+            f<sub>o</sub> / (c ± v<sub>o</sub>) = f<sub>f</sub> / (c ± v<sub>f</sub>)
+          </div>
+          <p>Esta expresión puede reescribirse como:</p>
+          <div class="formula-box pink">
+            f<sub>o</sub> = f<sub>f</sub> · (c ± v<sub>o</sub>) / (c ± v<sub>f</sub>)
+          </div>
+          <div class="section-number" style="margin-top:16px;">Reglas de Aplicación</div>
+          <p>Para aplicar correctamente los signos, recuerda:</p>
+          <ul class="sign-rules">
+            <li class="pos">Observador se <strong>acerca</strong>: v<sub>o</sub> &gt; 0 → numerador <strong>+</strong></li>
+            <li class="neg">Observador se <strong>aleja</strong>: v<sub>o</sub> &lt; 0 → numerador <strong>−</strong></li>
+            <li class="pos">Fuente se <strong>aleja</strong>: v<sub>f</sub> &gt; 0 → denominador <strong>+</strong></li>
+            <li class="neg">Fuente se <strong>acerca</strong>: v<sub>f</sub> &lt; 0 → denominador <strong>−</strong></li>
+          </ul>
+          <div class="callout-tip">
+            💡 Consejo: Siempre dibuja un esquema situando al observador y la fuente para no confundir los sentidos de movimiento.
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="info-card">
+            <h4>📊 Casos típicos</h4>
+            <table style="width:100%;border-collapse:collapse;font-size:.75rem;margin-top:6px;">
+              <thead>
+                <tr style="background:var(--blue);color:#fff;">
+                  <th style="padding:5px 8px;text-align:left;">Situación</th>
+                  <th style="padding:5px 8px;">f<sub>o</sub> vs f<sub>f</sub></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:#f0f8ff;">
+                  <td style="padding:5px 8px;">Fuente se acerca</td>
+                  <td style="padding:5px 8px;text-align:center;color:green;font-weight:600;">f<sub>o</sub> &gt; f<sub>f</sub></td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;">Fuente se aleja</td>
+                  <td style="padding:5px 8px;text-align:center;color:red;font-weight:600;">f<sub>o</sub> &lt; f<sub>f</sub></td>
+                </tr>
+                <tr style="background:#f0f8ff;">
+                  <td style="padding:5px 8px;">Observador se acerca</td>
+                  <td style="padding:5px 8px;text-align:center;color:green;font-weight:600;">f<sub>o</sub> &gt; f<sub>f</sub></td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px;">Observador se aleja</td>
+                  <td style="padding:5px 8px;text-align:center;color:red;font-weight:600;">f<sub>o</sub> &lt; f<sub>f</sub></td>
+                </tr>
+                <tr style="background:#f0f8ff;">
+                  <td style="padding:5px 8px;">Ambos en reposo</td>
+                  <td style="padding:5px 8px;text-align:center;font-weight:600;">f<sub>o</sub> = f<sub>f</sub></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="wave-canvas-wrap" style="margin-top:12px;">
+            <canvas id="formulaCanvas" width="370" height="180"></canvas>
+          </div>
+          <div class="fig-caption">Efecto Doppler: análisis de frecuencia de ondas sónicas</div>
+        </div>
+      </div>
+      <div class="page-num">03</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 4 · SIMULADOR AMBULANCIA
+    ════════════════════════════════════════ -->
+    <div class="page" id="p4">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 04 · Simulador</div>
+          <div class="section-title">La Ambulancia</div>
+          <p><strong>Ejemplo:</strong> De pie en un crucero, usted escucha una frecuencia de <strong>560 Hz</strong> de la sirena de una ambulancia que se aproxima. Después de que pasa, la frecuencia observada es de <strong>480 Hz</strong>. Determine la rapidez de la ambulancia.</p>
+
+          <div class="sim-road" id="ambRoad">
+            <div class="road-line"></div>
+            <div class="ambulance-car" id="ambCar" style="left:50px;">🚑</div>
+            <div class="person-icon" id="personIcon">🧍</div>
+            <canvas id="waveCanvas" style="position:absolute;top:0;left:0;pointer-events:none;" width="390" height="120"></canvas>
+          </div>
+
+          <div class="freq-display">
+            <div class="freq-item">f<sub>f</sub> (emitida)<span>frecuencia fuente</span><span id="ffDisplay">700 Hz</span></div>
+            <div class="freq-item">f<sub>o</sub> antes<span>acercándose</span><span id="foBeforeDisplay">—</span></div>
+            <div class="freq-item">f<sub>o</sub> después<span>alejándose</span><span id="foAfterDisplay">—</span></div>
+          </div>
+
+          <div class="sim-label">Frecuencia fuente (f<sub>f</sub>): <span id="ffVal">700 Hz</span></div>
+          <div class="slider-row">
+            <input type="range" id="ffSlider" min="200" max="1200" value="700">
+          </div>
+          <div class="sim-label">Velocidad ambulancia (v<sub>f</sub>): <span id="vfVal">26.5 m/s</span></div>
+          <div class="slider-row">
+            <input type="range" id="vfSlider" min="1" max="80" value="26.5" step="0.5">
+          </div>
+
+          <div class="sim-controls">
+            <button class="sim-btn" id="ambPlayBtn" onclick="toggleAmb()">▶ Iniciar Sirena</button>
+            <button class="sim-btn secondary" onclick="resetAmb()">↺ Reiniciar</button>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="section-number" style="margin-top:10px;">Solución del problema</div>
+          <p>Cuando la ambulancia <strong>se acerca</strong> (v<sub>f</sub> &lt; 0 en convenio) y el observador está en reposo (v<sub>o</sub> = 0):</p>
+          <div class="formula-box small">f<sub>acerca</sub> = f<sub>f</sub> · c / (c − v<sub>f</sub>) = 560</div>
+          <p>Cuando <strong>se aleja</strong> (v<sub>f</sub> &gt; 0):</p>
+          <div class="formula-box small pink">f<sub>aleja</sub> = f<sub>f</sub> · c / (c + v<sub>f</sub>) = 480</div>
+
+          <div class="step">
+            <div class="step-num">1</div>
+            <div><p>Dividimos ambas expresiones:</p>
+            <div class="formula-box small" style="margin:6px 0;">560/480 = (c + v<sub>f</sub>) / (c − v<sub>f</sub>) → 7/6 = (c + v<sub>f</sub>) / (c − v<sub>f</sub>)</div></div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div><p>Despejamos v<sub>f</sub>:</p>
+            <div class="formula-box small" style="margin:6px 0;">7(c − v<sub>f</sub>) = 6(c + v<sub>f</sub>) → 13v<sub>f</sub> = c</div></div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div>
+            <div class="formula-box" style="margin:6px 0;font-size:1rem;">v<sub>f</sub> = c/13 ≈ 26.5 m/s</div>
+            <p style="font-size:.78rem;margin-top:4px;">Tomando c = 343 m/s (velocidad del sonido en aire a 20°C)</p>
+            </div>
+          </div>
+          <div class="callout-tip">🔊 Usa los controles para escuchar el efecto Doppler real con síntesis de audio.</div>
+        </div>
+      </div>
+      <div class="page-num">04</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 5 · BARCOS Y CORRIENTE
+    ════════════════════════════════════════ -->
+    <div class="page" id="p5">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 05</div>
+          <div class="section-title">Movimiento con Corriente</div>
+          <p><strong>Ejemplo 2.19:</strong> Dos barcos se mueven a lo largo de una línea hacia el este. El buque trasero tiene una rapidez, relativa a un punto de observación con base en tierra, de <strong>64 km/h</strong>, y el buque delantero tiene una rapidez de <strong>45 km/h</strong>. Los dos barcos están en una región del océano donde la corriente es uniforme hacia el oeste a <strong>10 km/h</strong>. El barco trasero transmite una señal de sonar a <strong>1200 Hz</strong>. ¿Qué frecuencia monitorea el barco delantero? Use <strong>1520 m/s</strong> como la rapidez del sonido en agua oceánica.</p>
+
+          <div class="info-card" style="margin-top:8px;">
+            <h4>⚙️ Paso 1: Velocidades relativas al medio (agua)</h4>
+            <div class="formula-box small" style="margin:6px 0;">
+              v<sub>1O</sub> = v<sub>1T</sub> − v<sub>c</sub> = 64 − 10 = 54 km/h = 15 m/s<br>
+              v<sub>2O</sub> = v<sub>2T</sub> − v<sub>c</sub> = 45 − 10 = 35 km/h = 9.72 m/s
+            </div>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="info-card">
+            <h4>⚙️ Paso 2: Identificar roles</h4>
+            <p>El observador (segundo barco) <strong>se aleja</strong> y la fuente (primer barco) <strong>se acerca</strong>. Aplicamos:</p>
+          </div>
+          <div class="formula-box" style="margin:10px 0;">
+            f<sub>2</sub> = f<sub>1</sub> · (c − v<sub>2O</sub>) / (c − v<sub>1O</sub>)
+          </div>
+          <div class="formula-box pink small">
+            f<sub>2</sub> = 1200 · (1520 − 9.72) / (1520 − 15)<br>
+            f<sub>2</sub> = 1200 · (1510.28 / 1505)<br>
+            f<sub>2</sub> ≈ <strong>1204.21 Hz</strong>
+          </div>
+
+          <!-- Boat visualization -->
+          <div class="wave-canvas-wrap" style="margin-top:14px;">
+            <canvas id="boatCanvas" width="370" height="130"></canvas>
+          </div>
+          <div class="fig-caption">Dos barcos moviéndose con corriente marina</div>
+
+          <div class="callout-tip" style="margin-top:10px;">
+            💡 Cuando hay una corriente, se deben transformar las velocidades al marco de referencia del <strong>medio de propagación</strong> (el agua), no de la tierra.
+          </div>
+        </div>
+      </div>
+      <div class="page-num">05</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 6 · ONDAS DE CHOQUE
+    ════════════════════════════════════════ -->
+    <div class="page" id="p6">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 06</div>
+          <div class="section-title">Ondas de Choque y Onda de Mach</div>
+          <p>Un caso especial del efecto Doppler se presenta cuando el observador está en reposo, pero la fuente se mueve con una velocidad <strong>mayor</strong> que la velocidad de propagación de las ondas (<strong>v<sub>f</sub> &gt; c</strong>).</p>
+          <p>En un tiempo dado la fuente avanza más rápido que el frente de onda; si en un tiempo <em>t</em> la fuente se mueve de A hasta B, su onda emitida en A ha viajado solamente desde A hasta A'.</p>
+
+          <div class="formula-box" style="margin:12px 0;">
+            <div class="formula-label">Ángulo de Mach (θ)</div>
+            sin θ = c·t / v<sub>f</sub>·t = c / v<sub>f</sub> = 1/M
+          </div>
+
+          <div class="callout">
+            La superficie cónica formada por la superposición de los frentes de onda es la <strong>onda de choque</strong>. El "boom" sónico es causado por esta onda al alcanzarnos.
+          </div>
+
+          <div class="info-card" style="margin-top:10px;">
+            <h4>⚡ Condiciones</h4>
+            <ul style="font-size:.8rem;padding-left:16px;color:#333;line-height:2;">
+              <li><strong>v<sub>f</sub> = c</strong> → M = 1 → sin θ = 1 → θ = 90° (pared de onda)</li>
+              <li><strong>v<sub>f</sub> &gt; c</strong> → M &gt; 1 → onda de choque cónica</li>
+            </ul>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="mach-canvas-wrap">
+            <canvas id="shockCanvas" width="370" height="220"></canvas>
+          </div>
+          <div class="fig-caption">Diagrama del Cono de Mach y Formación de Onda de Choque</div>
+          <div class="info-card" style="margin-top:10px;">
+            <h4>🔺 Geometría del cono</h4>
+            <p>De la figura: sin θ = h/√(x²+h²), y sabemos que sin θ = c/v<sub>f</sub>. Igualando:</p>
+            <div class="formula-box small" style="margin:8px 0;">
+              h/√(x²+h²) = c/v<sub>f</sub>  →  c·√(x²+h²) = v<sub>f</sub>·h
+            </div>
+            <p style="font-size:.78rem;">Esta relación permite calcular cuándo una persona en tierra escuchará la onda de choque de un avión supersónico volando sobre ella.</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">06</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 7 · NÚMERO DE MACH
+    ════════════════════════════════════════ -->
+    <div class="page" id="p7">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 07</div>
+          <div class="section-title">El Número de Mach</div>
+          <p>Conocido coloquialmente como <em>mach</em>, es una medida de velocidad relativa definida como el cociente entre la velocidad de un objeto y la velocidad del sonido en el medio en que se mueve.</p>
+
+          <div class="formula-box" style="font-size:1.4rem; padding:18px;">
+            <div class="formula-label">Número de Mach</div>
+            M = v<sub>f</sub> / c
+          </div>
+
+          <p>El mach es un número adimensional normalmente utilizado para describir la velocidad de los aviones.</p>
+
+          <div class="info-card" style="margin-top:12px;">
+            <h4>📌 Importancia del Número de Mach</h4>
+            <p>La velocidad del sonido <strong>no es constante</strong>; depende del medio y la temperatura. A 20°C en aire: c ≈ 343 m/s. A gran altitud (−50°C): c ≈ 295 m/s.</p>
+          </div>
+
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-top:12px;">
+            <thead><tr style="background:var(--blue);color:#fff;">
+              <th style="padding:6px;">Régimen</th>
+              <th style="padding:6px;">Mach</th>
+              <th style="padding:6px;">Ejemplo</th>
+            </tr></thead>
+            <tbody>
+              <tr style="background:#f0f8ff;"><td style="padding:6px;text-align:center;">Subsónico</td><td style="padding:6px;text-align:center;">M &lt; 1</td><td style="padding:6px;">Avión comercial</td></tr>
+              <tr><td style="padding:6px;text-align:center;">Transónico</td><td style="padding:6px;text-align:center;">M ≈ 1</td><td style="padding:6px;">F-22 Raptor</td></tr>
+              <tr style="background:#f0f8ff;"><td style="padding:6px;text-align:center;">Supersónico</td><td style="padding:6px;text-align:center;">1 &lt; M &lt; 5</td><td style="padding:6px;">Concorde (M=2)</td></tr>
+              <tr><td style="padding:6px;text-align:center;">Hipersónico</td><td style="padding:6px;text-align:center;">M &gt; 5</td><td style="padding:6px;">X-43 (M=9.6)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="page-right">
+          <div class="mach-canvas-wrap">
+            <canvas id="machCanvas" width="370" height="200"></canvas>
+          </div>
+          <div class="fig-caption">Regímenes de vuelo según el número de Mach</div>
+          <!-- Mach Angle Calculator -->
+          <div class="info-card" style="margin-top:12px;">
+            <h4>🧮 Calculadora de Ángulo de Mach</h4>
+            <div class="sim-label">Número de Mach (M): <span id="machVal">2.0</span></div>
+            <div class="slider-row">
+              <input type="range" id="machSlider" min="1.01" max="6" step="0.01" value="2.0" oninput="updateMachCalc()">
+            </div>
+            <div class="formula-box small" id="machResult">
+              sin θ = 1/2.0 = 0.500 → θ = 30.0°
+            </div>
+            <div style="font-size:.75rem;color:#555;margin-top:6px;">
+              A mayor número de Mach, menor es el ángulo del cono de choque.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">07</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 8 · AVIÓN SUPERSÓNICO
+    ════════════════════════════════════════ -->
+    <div class="page" id="p8">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 08</div>
+          <div class="section-title">Avión Supersónico</div>
+          <p><strong>Ejemplo 2.20:</strong> Un avión supersónico que viaja a <strong>Mach 3</strong> a una altura de <strong>20000 m</strong> está directamente arriba de una persona en el tiempo <em>t = 0</em>.</p>
+          <p>Preguntas:</p>
+          <ul style="font-size:.85rem;line-height:2;padding-left:18px;color:#333;">
+            <li>¿En qué tiempo la persona encontrará la onda de choque?</li>
+            <li>¿Dónde estará el avión cuando finalmente se escuche el "estallido"?</li>
+          </ul>
+          <p>Velocidad del sonido en el aire: <strong>335 m/s</strong></p>
+
+          <div class="info-card" style="margin-top:10px;">
+            <h4>📐 Solución</h4>
+          </div>
+          <div class="step">
+            <div class="step-num">1</div>
+            <div><p>De la figura: sin θ = h/√(x²+h²) y sin θ = c/v<sub>f</sub></p></div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div><p>Igualando: c·√(x²+h²) = v<sub>f</sub>·h</p>
+            <div class="formula-box small" style="margin:4px 0;">√(x²+h²) = (v<sub>f</sub>/c)·h = M·h = 3·20000 = 60000 m</div></div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div><p>Sustituyendo v<sub>f</sub> = 3c (Mach 3):</p>
+            <div class="formula-box small" style="margin:4px 0;">x² = (3h)² − h² = 8h² → x = h√8 = 20000√8 ≈ 56569 m</div></div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div><p>Tiempo:</p>
+            <div class="formula-box" style="margin:4px 0;">t = x/v<sub>f</sub> = 56569/(3×335) ≈ <strong>56.3 s</strong></div></div>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="mach-canvas-wrap">
+            <canvas id="planeCanvas" width="370" height="240"></canvas>
+          </div>
+          <div class="fig-caption">Avión supersónico a Mach 3, h = 20000 m</div>
+          <div class="info-card" style="margin-top:10px;">
+            <h4>📊 Resultados</h4>
+            <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px;">
+              <tr style="background:#e8f4ff;">
+                <td style="padding:6px;font-weight:600;">Altura (h)</td>
+                <td style="padding:6px;text-align:right;">20 000 m</td>
+              </tr>
+              <tr>
+                <td style="padding:6px;font-weight:600;">Mach (M)</td>
+                <td style="padding:6px;text-align:right;">3</td>
+              </tr>
+              <tr style="background:#e8f4ff;">
+                <td style="padding:6px;font-weight:600;">Ángulo θ</td>
+                <td style="padding:6px;text-align:right;">19.47°</td>
+              </tr>
+              <tr>
+                <td style="padding:6px;font-weight:600;">Distancia horizontal</td>
+                <td style="padding:6px;text-align:right;">≈ 56 569 m</td>
+              </tr>
+              <tr style="background:#e8f4ff;">
+                <td style="padding:6px;font-weight:600;">Tiempo de espera</td>
+                <td style="padding:6px;text-align:right;color:var(--pink);font-weight:700;">≈ 56.3 s</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">08</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 9 · APLICACIONES
+    ════════════════════════════════════════ -->
+    <div class="page" id="p9">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 09</div>
+          <div class="section-title">Más que Solo Sonido</div>
+          <p>Aunque lo experimentamos a diario con el sonido, el Efecto Doppler es fundamental en muchas áreas de la ciencia y tecnología:</p>
+
+          <div class="app-grid">
+            <div class="app-card">
+              <div class="icon">🔭</div>
+              <h4>Astronomía</h4>
+              <p>Mide la velocidad a la que estrellas y galaxias se acercan o alejan (corrimiento al rojo).</p>
+            </div>
+            <div class="app-card">
+              <div class="icon">🚔</div>
+              <h4>Radares de Tráfico</h4>
+              <p>Disparan ondas de radio y miden el cambio de frecuencia del rebote para calcular la velocidad.</p>
+            </div>
+            <div class="app-card">
+              <div class="icon">❤️</div>
+              <h4>Ecografía Doppler</h4>
+              <p>Visualiza el flujo sanguíneo por el corazón y los vasos sin necesidad de cirugía.</p>
+            </div>
+            <div class="app-card">
+              <div class="icon">🌀</div>
+              <h4>Radar Meteorológico</h4>
+              <p>Detecta el movimiento de tormentas y tornados midiendo la velocidad del viento.</p>
+            </div>
+            <div class="app-card">
+              <div class="icon">🛸</div>
+              <h4>Exploración Espacial</h4>
+              <p>Sondas espaciales como Voyager son rastreadas por el desplazamiento Doppler de sus señales.</p>
+            </div>
+            <div class="app-card">
+              <div class="icon">🐬</div>
+              <h4>Sonar Submarino</h4>
+              <p>Localiza submarinos y bancos de peces usando el efecto Doppler en ondas sonoras.</p>
+            </div>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="info-card">
+            <h4>🌌 Corrimiento al Rojo y Expansión del Universo</h4>
+            <p>Edwin Hubble observó que la luz de galaxias lejanas siempre estaba desplazada hacia el rojo (frecuencias menores), lo que indica que <strong>todas las galaxias se alejan</strong>. Esto fue la evidencia del Big Bang y la expansión del universo.</p>
+            <div class="formula-box small" style="margin:8px 0;">
+              z = Δλ/λ<sub>0</sub> = v/c  (corrimiento al rojo)
+            </div>
+          </div>
+          <div class="info-card" style="margin-top:10px;">
+            <h4>💉 Ecografía Doppler en Medicina</h4>
+            <p>La ecografía Doppler permite visualizar el flujo sanguíneo por el corazón y los vasos sanguíneos sin necesidad de cirugía. Usa frecuencias de ultrasonido (2–10 MHz) y detecta los cambios de frecuencia producidos por los glóbulos rojos en movimiento.</p>
+          </div>
+          <div class="wave-canvas-wrap" style="margin-top:12px;">
+            <canvas id="appCanvas" width="370" height="130"></canvas>
+          </div>
+          <div class="fig-caption">El Efecto Doppler en la Ciencia y Tecnología</div>
+        </div>
+      </div>
+      <div class="page-num">09</div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         PAGE 10 · SIMULADOR INTERACTIVO
+    ════════════════════════════════════════ -->
+    <div class="page" id="p10">
+      <div class="page-inner">
+        <div class="page-left">
+          <div class="section-number">Sección 10 · Simulador</div>
+          <div class="section-title">Monitor de Frentes de Onda</div>
+          <p>Observa cómo se deforman los frentes de onda cuando la fuente está en movimiento.</p>
+
+          <ul style="font-size:.82rem;line-height:2;color:#333;padding-left:16px;">
+            <li>Si <strong>v<sub>f</sub> = 0</strong>, los frentes son concéntricos.</li>
+            <li>Si <strong>v<sub>f</sub> &lt; c</strong>, las ondas se comprimen adelante y se expanden atrás.</li>
+            <li>Si <strong>v<sub>f</sub> = c</strong>, se produce una <strong>onda de choque</strong>.</li>
+            <li>Si <strong>v<sub>f</sub> &gt; c</strong>, se forma el cono de Mach.</li>
+          </ul>
+
+          <div class="sim-label" style="margin-top:10px;">Velocidad Fuente (v<sub>f</sub>/c): <span id="simVfVal">0.50</span></div>
+          <div class="slider-row">
+            <input type="range" id="simVfSlider" min="0" max="1.5" step="0.01" value="0.5" oninput="updateWaveSim()">
+          </div>
+          <div class="sim-label">Frecuencia Fuente (f<sub>f</sub>): <span id="simFfVal">2.0 Hz</span></div>
+          <div class="slider-row">
+            <input type="range" id="simFfSlider" min="0.5" max="5" step="0.1" value="2" oninput="updateWaveSim()">
+          </div>
+          <div class="sim-label">Velocidad Onda (c): <span id="simCVal">100</span></div>
+          <div class="slider-row">
+            <input type="range" id="simCSlider" min="50" max="200" step="10" value="100" oninput="updateWaveSim()">
+          </div>
+
+          <div class="sim-controls" style="margin-top:10px;">
+            <button class="sim-btn" id="waveSimBtn" onclick="toggleWaveSim()">⏸ Pausar</button>
+            <button class="sim-btn secondary" onclick="resetWaveSim()">↺ Reiniciar</button>
+          </div>
+
+          <div class="freq-display" style="margin-top:8px;">
+            <div class="freq-item">f<sub>o</sub> (adelante)<span>observador frontal</span><span id="simFoFront">—</span></div>
+            <div class="freq-item">f<sub>o</sub> (atrás)<span>observador trasero</span><span id="simFoBack">—</span></div>
+          </div>
+        </div>
+        <div class="page-right">
+          <div class="wave-canvas-wrap">
+            <canvas id="mainSimCanvas" width="370" height="370"></canvas>
+          </div>
+          <div class="fig-caption">Monitor de frentes de onda en tiempo real</div>
+        </div>
+      </div>
+      <div class="page-num">10</div>
+    </div>
+
+  </div><!-- /book -->
+</div><!-- /book-scene -->
+
+<!-- NAV -->
+<div id="nav">
+  <button class="nav-btn" id="prevBtn" onclick="changePage(-1)" disabled>◀ Anterior</button>
+  <div class="nav-dots" id="navDots"></div>
+  <span id="page-indicator">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="changePage(1)">Siguiente ▶</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════
+const totalPages = 11;
+let currentPage = 0;
+
+function buildSpiral() {
+  const spiral = document.getElementById('spiral');
+  for (let i = 0; i < 18; i++) {
+    const r = document.createElement('div');
+    r.className = 'spiral-ring';
+    spiral.appendChild(r);
+  }
+}
+buildSpiral();
+
+function buildDots() {
+  const container = document.getElementById('navDots');
+  for (let i = 0; i < totalPages; i++) {
+    const d = document.createElement('div');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goToPage(i);
+    container.appendChild(d);
+  }
+}
+buildDots();
+
+function goToPage(n) {
+  if (n === currentPage) return;
+  const oldPage = document.getElementById('p' + currentPage);
+  oldPage.classList.add('prev');
+  oldPage.classList.remove('active');
+  setTimeout(() => oldPage.classList.remove('prev'), 450);
+
+  currentPage = n;
+  const newPage = document.getElementById('p' + currentPage);
+  newPage.classList.add('active');
+
+  document.getElementById('prevBtn').disabled = currentPage === 0;
+  document.getElementById('nextBtn').disabled = currentPage === totalPages - 1;
+  document.getElementById('page-indicator').textContent = (currentPage + 1) + ' / ' + totalPages;
+  document.querySelectorAll('.nav-dot').forEach((d, i) => d.classList.toggle('active', i === currentPage));
+
+  // init canvases when needed
+  if (currentPage === 1) initHistCanvas();
+  if (currentPage === 2) initGeoCanvas();
+  if (currentPage === 3) initFormulaCanvas();
+  if (currentPage === 4) initAmbSim();
+  if (currentPage === 5) initBoatCanvas();
+  if (currentPage === 6) initShockCanvas();
+  if (currentPage === 7) initMachCanvas();
+  if (currentPage === 8) initPlaneCanvas();
+  if (currentPage === 9) initAppCanvas();
+  if (currentPage === 10) initWaveSimCanvas();
+}
+
+function changePage(dir) {
+  const n = currentPage + dir;
+  if (n >= 0 && n < totalPages) goToPage(n);
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changePage(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   changePage(-1);
+});
+
+// ═══════════════════════════════════════════
+// CANVAS HELPERS
+// ═══════════════════════════════════════════
+function clearCanvas(ctx) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+// ── PAGE 1: History wave canvas ──
+function initHistCanvas() {
+  const c = document.getElementById('histCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = '#0d1b2a';
+    ctx.fillRect(0, 0, c.width, c.height);
+    // Source moving right, emit waves
+    const sourceX = 60 + (t * 0.4) % (c.width - 80);
+    // Draw waves
+    for (let i = 0; i < 6; i++) {
+      const age = (i * 18 + t) % 110;
+      const cx = sourceX - age * 0.35;
+      const r = age * 0.9;
+      if (r < 2) continue;
+      ctx.beginPath();
+      ctx.arc(cx, c.height / 2, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${170 + i * 15},80%,60%,${0.7 - age / 130})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    // Source dot
+    ctx.beginPath();
+    ctx.arc(sourceX, c.height / 2, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#e91e8c';
+    ctx.fill();
+    // Person
+    ctx.font = '20px serif';
+    ctx.fillText('🧍', c.width - 38, c.height / 2 + 10);
+    t++;
+    if (currentPage === 1) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── PAGE 2: Geometric canvas ──
+function initGeoCanvas() {
+  const c = document.getElementById('geoCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = '#0d1b2a';
+    ctx.fillRect(0, 0, c.width, c.height);
+    const cx = 180, cy = 100;
+    // Moving source
+    const sx = 100 + (t * 0.3) % 160;
+    for (let i = 0; i < 5; i++) {
+      const r = (t * 0.5 + i * 28) % 140;
+      const originX = sx - r * 0.4;
+      ctx.beginPath();
+      ctx.arc(originX, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,194,212,${0.6 - r / 200})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    // Source point F
+    ctx.beginPath(); ctx.arc(sx, cy, 6, 0, Math.PI*2);
+    ctx.fillStyle = '#e91e8c'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '11px monospace';
+    ctx.fillText('F', sx + 8, cy - 6);
+    // Observer
+    ctx.beginPath(); ctx.arc(30, cy, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#f5c842'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText('O', 12, cy - 6);
+    t++;
+    if (currentPage === 2) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── PAGE 3: Formula canvas ──
+function initFormulaCanvas() {
+  const c = document.getElementById('formulaCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = '#0d1b2a';
+    ctx.fillRect(0, 0, c.width, c.height);
+    // Ambulance approaching: compressed waves
+    const ambX = c.width - 60 - (t * 0.6) % (c.width - 100);
+    for (let i = 0; i < 7; i++) {
+      const age = (i * 14 + t) % 120;
+      const cx = ambX + age * 0.7;
+      const r = age * 0.85;
+      const isAhead = cx > ambX;
+      ctx.beginPath();
+      ctx.arc(cx, c.height/2, r, 0, Math.PI*2);
+      ctx.strokeStyle = isAhead
+        ? `rgba(233,30,140,${0.7 - age/160})`
+        : `rgba(0,194,212,${0.7 - age/160})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.font = '22px serif';
+    ctx.fillText('🚑', ambX - 18, c.height/2 + 10);
+    ctx.font = '10px Space Mono, monospace';
+    ctx.fillStyle = '#e91e8c';
+    ctx.fillText('Alta frec.', 20, 20);
+    ctx.fillStyle = '#00c2d4';
+    ctx.fillText('Baja frec.', c.width - 80, 20);
+    t++;
+    if (currentPage === 3) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// PAGE 4: AMBULANCE SIMULATOR + WEB AUDIO
+// ═══════════════════════════════════════════
+let ambRunning = false;
+let ambX = 30;
+let ambDir = 1;
+let ambAF; // animation frame
+let audioCtx = null;
+let sirenOsc = null, sirenGain = null;
+let sirenRunning = false;
+let waveParticles = [];
+let waveCanvas, waveCtx;
+
+function initAmbSim() {
+  waveCanvas = document.getElementById('waveCanvas');
+  if (!waveCanvas) return;
+  waveCtx = waveCanvas.getContext('2d');
+  updateAmbFreqs();
+  document.getElementById('ffSlider').oninput = function() {
+    document.getElementById('ffVal').textContent = this.value + ' Hz';
+    document.getElementById('ffDisplay').textContent = this.value + ' Hz';
+    updateAmbFreqs();
+    if (sirenRunning) updateSirenFreq();
+  };
+  document.getElementById('vfSlider').oninput = function() {
+    document.getElementById('vfVal').textContent = parseFloat(this.value).toFixed(1) + ' m/s';
+    updateAmbFreqs();
+  };
+}
+
+function updateAmbFreqs() {
+  const ff = parseFloat(document.getElementById('ffSlider').value);
+  const vf = parseFloat(document.getElementById('vfSlider').value);
+  const c = 343;
+  const foBefore = (ff * c / (c - vf)).toFixed(1);
+  const foAfter  = (ff * c / (c + vf)).toFixed(1);
+  document.getElementById('foBeforeDisplay').textContent = foBefore + ' Hz';
+  document.getElementById('foAfterDisplay').textContent  = foAfter  + ' Hz';
+}
+
+function toggleAmb() {
+  if (!ambRunning) startAmb();
+  else stopAmb();
+}
+
+function startAmb() {
+  ambRunning = true;
+  document.getElementById('ambPlayBtn').textContent = '⏹ Detener Sirena';
+  startSiren();
+  animateAmb();
+}
+
+function stopAmb() {
+  ambRunning = false;
+  document.getElementById('ambPlayBtn').textContent = '▶ Iniciar Sirena';
+  stopSiren();
+  cancelAnimationFrame(ambAF);
+  clearCanvas(waveCtx);
+}
+
+function resetAmb() {
+  stopAmb();
+  ambX = 30;
+  document.getElementById('ambCar').style.left = '30px';
+  clearCanvas(waveCtx);
+}
+
+function animateAmb() {
+  const car = document.getElementById('ambCar');
+  const road = document.getElementById('ambRoad');
+  const roadW = road.offsetWidth;
+  const ff = parseFloat(document.getElementById('ffSlider').value);
+  const vf = parseFloat(document.getElementById('vfSlider').value);
+  const c = 343;
+  const speed = vf * 0.4;
+
+  if (ambDir === 1 && ambX > roadW - 80) {
+    ambDir = -1;
+    car.style.transform = 'scaleX(-1)';
+  } else if (ambDir === -1 && ambX < 30) {
+    ambDir = 1;
+    car.style.transform = 'scaleX(1)';
+  }
+  ambX += speed * ambDir;
+  car.style.left = ambX + 'px';
+
+  // Emit wave particles
+  if (Math.random() < 0.4) {
+    waveParticles.push({ x: ambX + 20, y: 60, r: 2, maxR: 55, alpha: 0.8, dir: ambDir, speed: vf });
+  }
+
+  // Draw waves
+  waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+  const personX = roadW - 50;
+  const isBefore = ambDir === 1 ? ambX < personX : ambX > personX;
+  const foDisplay = isBefore
+    ? (ff * c / (c - vf)).toFixed(1)
+    : (ff * c / (c + vf)).toFixed(1);
+
+  waveParticles = waveParticles.filter(p => p.r < p.maxR);
+  for (const p of waveParticles) {
+    // Doppler compression/expansion
+    const expand = ambDir * p.dir > 0 ? 0.7 : 1.5;
+    p.r += 1.2;
+    const rx = p.r * expand;
+    const ry = p.r;
+    waveCtx.beginPath();
+    waveCtx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
+    waveCtx.strokeStyle = isBefore
+      ? `rgba(233,30,140,${p.alpha * (1 - p.r / p.maxR)})`
+      : `rgba(0,194,212,${p.alpha * (1 - p.r / p.maxR)})`;
+    waveCtx.lineWidth = 1.5;
+    waveCtx.stroke();
+  }
+
+  // Update siren pitch based on position relative to person
+  if (sirenRunning && sirenOsc) {
+    const baseFreq = parseFloat(document.getElementById('ffSlider').value);
+    const targetFreq = isBefore
+      ? baseFreq * c / (c - vf)
+      : baseFreq * c / (c + vf);
+    updateSirenPitch(targetFreq);
+  }
+
+  if (ambRunning) ambAF = requestAnimationFrame(animateAmb);
+}
+
+// ── WEB AUDIO SIREN ──
+function startSiren() {
+  if (sirenRunning) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Real ambulance: two-tone wail (HI-LO)
+    sirenGain = audioCtx.createGain();
+    sirenGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    sirenGain.connect(audioCtx.destination);
+
+    sirenOsc = audioCtx.createOscillator();
+    sirenOsc.type = 'sawtooth';
+    sirenOsc.frequency.setValueAtTime(700, audioCtx.currentTime);
+    sirenOsc.connect(sirenGain);
+    sirenOsc.start();
+
+    // LFO for wail effect (up/down like real siren)
+    const lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(0.9, audioCtx.currentTime);
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.setValueAtTime(180, audioCtx.currentTime);
+    lfo.connect(lfoGain);
+    lfoGain.connect(sirenOsc.frequency);
+    lfo.start();
+
+    // Second harmonic for richness
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(1050, audioCtx.currentTime);
+    const g2 = audioCtx.createGain();
+    g2.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    osc2.connect(g2);
+    g2.connect(audioCtx.destination);
+    osc2.start();
+
+    sirenRunning = true;
+  } catch(e) { console.log('Audio error:', e); }
+}
+
+function stopSiren() {
+  if (!sirenRunning || !audioCtx) return;
+  try {
+    sirenGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+    setTimeout(() => { audioCtx.close(); audioCtx = null; sirenOsc = null; sirenGain = null; }, 200);
+  } catch(e) {}
+  sirenRunning = false;
+}
+
+function updateSirenPitch(freq) {
+  if (!sirenOsc || !audioCtx) return;
+  try {
+    sirenOsc.frequency.linearRampToValueAtTime(freq, audioCtx.currentTime + 0.08);
+  } catch(e) {}
+}
+
+function updateSirenFreq() {
+  const ff = parseFloat(document.getElementById('ffSlider').value);
+  if (sirenOsc && audioCtx) {
+    try { sirenOsc.frequency.setValueAtTime(ff, audioCtx.currentTime); } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════════
+// PAGE 5: BOAT CANVAS
+// ═══════════════════════════════════════════
+function initBoatCanvas() {
+  const c = document.getElementById('boatCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = '#003366';
+    ctx.fillRect(0, 0, c.width, c.height);
+    // Water
+    ctx.fillStyle = '#0055aa';
+    ctx.fillRect(0, 50, c.width, c.height - 50);
+    // Waves decoration
+    for (let x = 0; x < c.width; x += 30) {
+      ctx.beginPath();
+      ctx.arc(x + (t * 0.5 % 30), 55, 8, Math.PI, 0);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // Current arrow
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '14px Arial';
+    ctx.fillText('← Corriente 10 km/h', 10, 40);
+
+    // Boat 1 (source) - trailing
+    const b1x = 30 + (t * 0.4) % (c.width * 0.5);
+    ctx.font = '22px serif';
+    ctx.fillText('🚢', b1x, 80);
+    ctx.fillStyle = '#f5c842'; ctx.font = '9px monospace';
+    ctx.fillText('64 km/h', b1x, 100);
+    ctx.fillStyle = '#fff'; ctx.fillText('f=1200Hz', b1x, 110);
+
+    // Boat 2 (observer) - leading
+    const b2x = b1x + 160;
+    ctx.font = '22px serif';
+    ctx.fillText('🛳', b2x > c.width - 40 ? c.width - 40 : b2x, 80);
+    ctx.fillStyle = '#00c2d4'; ctx.font = '9px monospace';
+    ctx.fillText('45 km/h', b2x > c.width - 40 ? c.width - 40 : b2x, 100);
+    ctx.fillStyle = '#fff'; ctx.fillText('f≈1204Hz', b2x > c.width - 40 ? c.width - 40 : b2x, 110);
+
+    // Sonar rings
+    for (let i = 0; i < 4; i++) {
+      const r = (t * 0.6 + i * 20) % 80;
+      ctx.beginPath();
+      ctx.arc(b1x + 18, 75, r, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,194,212,${0.5 - r/100})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    t++;
+    if (currentPage === 5) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// PAGE 6: SHOCK WAVE CANVAS
+// ═══════════════════════════════════════════
+function initShockCanvas() {
+  const c = document.getElementById('shockCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  const M = 2.0;
+  const sinTheta = 1 / M;
+  const theta = Math.asin(sinTheta);
+
+  function draw() {
+    ctx.fillStyle = '#000818';
+    ctx.fillRect(0, 0, c.width, c.height);
+    const sourceX = c.width * 0.15 + (t * 0.8) % (c.width * 0.6);
+    const cy = c.height / 2;
+
+    // Past wave positions
+    for (let i = 0; i < 8; i++) {
+      const pastX = sourceX - i * 38 * M;
+      const r = i * 38;
+      if (r < 2) continue;
+      ctx.beginPath();
+      ctx.arc(pastX, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,150,200,${0.4 - i * 0.04})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // Mach cone lines
+    const coneLen = 200;
+    const coneH = coneLen * Math.tan(theta);
+    ctx.beginPath();
+    ctx.moveTo(sourceX, cy);
+    ctx.lineTo(sourceX - coneLen, cy - coneH);
+    ctx.moveTo(sourceX, cy);
+    ctx.lineTo(sourceX - coneLen, cy + coneH);
+    ctx.strokeStyle = '#e91e8c';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Angle label
+    ctx.fillStyle = '#f5c842';
+    ctx.font = '12px Space Mono, monospace';
+    ctx.fillText(`θ = ${(theta * 180 / Math.PI).toFixed(1)}°`, sourceX - coneLen + 10, cy - coneH + 20);
+    ctx.fillText(`M = ${M}`, sourceX - 20, cy - 20);
+
+    // Source plane
+    ctx.font = '22px serif';
+    ctx.fillText('✈️', sourceX - 16, cy + 8);
+    // Trail
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(sourceX - 50, cy - 1, 40, 2);
+
+    t++;
+    if (currentPage === 6) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// PAGE 7: MACH CANVAS
+// ═══════════════════════════════════════════
+function initMachCanvas() {
+  const c = document.getElementById('machCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  // Draw regimes
+  ctx.fillStyle = '#000818';
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  const regimes = [
+    { label: 'Subsónico', range: 'M < 1', color: '#00c2d4', x: 40 },
+    { label: 'Transónico', range: 'M ≈ 1', color: '#f5c842', x: 130 },
+    { label: 'Supersónico', range: '1 < M < 5', color: '#e91e8c', x: 220 },
+    { label: 'Hipersónico', range: 'M > 5', color: '#ff6b35', x: 320 },
+  ];
+  regimes.forEach((r, i) => {
+    ctx.fillStyle = r.color + '33';
+    ctx.fillRect(r.x - 30, 20, 85, c.height - 40);
+    ctx.fillStyle = r.color;
+    ctx.font = 'bold 10px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(r.label, r.x + 12, 40);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '9px Space Mono, monospace';
+    ctx.fillText(r.range, r.x + 12, 56);
+  });
+
+  // Mach scale
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(125, 0); ctx.lineTo(125, c.height); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(215, 0); ctx.lineTo(215, c.height); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Shock wave at M=1
+  ctx.strokeStyle = '#f5c842';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(125, 70); ctx.lineTo(125, 180); ctx.stroke();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px DM Sans, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('✈ Avión comercial', 20, 120);
+  ctx.fillText('✈ F-22 Raptor', 115, 120);
+  ctx.fillText('✈ Concorde', 195, 120);
+  ctx.fillText('✈ X-43', 305, 120);
+  ctx.textAlign = 'left';
+}
+
+function updateMachCalc() {
+  const M = parseFloat(document.getElementById('machSlider').value);
+  document.getElementById('machVal').textContent = M.toFixed(2);
+  const sinTheta = 1 / M;
+  const theta = Math.asin(sinTheta) * 180 / Math.PI;
+  document.getElementById('machResult').innerHTML =
+    `sin θ = 1/${M.toFixed(2)} = ${sinTheta.toFixed(3)} → θ = ${theta.toFixed(1)}°`;
+}
+
+// ═══════════════════════════════════════════
+// PAGE 8: PLANE CANVAS
+// ═══════════════════════════════════════════
+function initPlaneCanvas() {
+  const c = document.getElementById('planeCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000818';
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  const h = 20000, M = 3, c_sound = 335;
+  const xMax = h * Math.sqrt(M * M - 1);
+  // Scale to canvas
+  const scale = (c.height - 60) / (h * 1.2);
+  const groundY = c.height - 20;
+  const planeY = groundY - h * scale;
+  const personX = 60;
+  const planeX0 = personX; // directly above person at t=0
+  const planeX = personX + xMax * scale;
+
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  // Ground
+  ctx.fillStyle = '#1a3a1a';
+  ctx.fillRect(0, groundY, c.width, 10);
+  ctx.fillStyle = '#2a5a2a';
+  ctx.fillRect(0, groundY, c.width, 3);
+
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+  sky.addColorStop(0, '#000a1a');
+  sky.addColorStop(1, '#0a2a4a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, c.width, groundY);
+
+  // Person
+  ctx.font = '20px serif';
+  ctx.fillText('🧍', personX - 10, groundY + 2);
+  ctx.fillStyle = '#f5c842'; ctx.font = '9px monospace';
+  ctx.fillText('t=0: avión arriba', personX - 10, groundY - 5);
+
+  // Plane path
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(planeX0, planeY);
+  ctx.lineTo(c.width - 20, planeY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Plane
+  ctx.font = '22px serif';
+  ctx.fillText('✈️', planeX - 10, planeY + 8);
+  ctx.fillStyle = '#e91e8c'; ctx.font = '9px monospace';
+  ctx.fillText('Mach 3', planeX, planeY - 8);
+
+  // Shock cone
+  const sinTheta = 1 / M;
+  const cosTheta = Math.sqrt(1 - sinTheta * sinTheta);
+  ctx.strokeStyle = '#e91e8c';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(planeX, planeY);
+  ctx.lineTo(planeX - 120, planeY - 120 * sinTheta / cosTheta);
+  ctx.moveTo(planeX, planeY);
+  ctx.lineTo(planeX - 120, planeY + 120 * sinTheta / cosTheta);
+  ctx.stroke();
+
+  // Height line
+  ctx.strokeStyle = 'rgba(0,194,212,0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(planeX0, planeY);
+  ctx.lineTo(planeX0, groundY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#00c2d4'; ctx.font = '9px monospace';
+  ctx.fillText('h=20km', planeX0 + 4, (planeY + groundY) / 2);
+
+  // Horizontal dist
+  ctx.strokeStyle = 'rgba(245,200,66,0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(planeX0, groundY - 12);
+  ctx.lineTo(planeX, groundY - 12);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f5c842'; ctx.font = '9px monospace';
+  ctx.fillText('x ≈ 56.6 km', (planeX0 + planeX) / 2 - 30, groundY - 16);
+}
+
+// ═══════════════════════════════════════════
+// PAGE 9: APP CANVAS
+// ═══════════════════════════════════════════
+function initAppCanvas() {
+  const c = document.getElementById('appCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  let t = 0;
+  function draw() {
+    ctx.fillStyle = '#000818';
+    ctx.fillRect(0, 0, c.width, c.height);
+    // Redshift visualization
+    const starX = 60 + (t * 0.2) % 250;
+    // Shift color from blue (approaching) to red (receding)
+    const shift = ((t * 0.002) % 1);
+    const r = Math.floor(50 + 205 * shift);
+    const b = Math.floor(255 - 205 * shift);
+    ctx.beginPath();
+    ctx.arc(starX, c.height / 2, 8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgb(${r},50,${b})`;
+    ctx.fill();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = `rgb(${r},50,${b})`;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Light waves
+    for (let i = 0; i < 5; i++) {
+      const wr = (t * 0.5 + i * 18) % 100;
+      ctx.beginPath();
+      ctx.arc(starX, c.height / 2, wr, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgb(${r},50,${b},${0.5 - wr / 130})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff'; ctx.font = '10px DM Sans';
+    ctx.fillText('⭐ Corrimiento al Rojo / Azul', 10, 20);
+    ctx.fillStyle = shift < 0.5 ? '#6060ff' : '#ff4040';
+    ctx.font = '9px monospace';
+    ctx.fillText(shift < 0.5 ? '← Acercándose (azul)' : 'Alejándose → (rojo)', 10, c.height - 10);
+    t++;
+    if (currentPage === 9) requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// PAGE 10: WAVE SIMULATOR
+// ═══════════════════════════════════════════
+let waveSimRunning = true;
+let waveSimAF;
+let waveSimT = 0;
+let waveSimVf = 0.5;
+let waveSimFf = 2.0;
+let waveSimC = 100;
+const wsWaves = [];
+let wsSrcX = 185, wsSrcY = 185;
+let wsSrcVX = 0;
+
+function initWaveSimCanvas() {
+  const c = document.getElementById('mainSimCanvas');
+  if (!c) return;
+  wsWaves.length = 0;
+  waveSimT = 0;
+  wsSrcX = 185; wsSrcY = 185;
+  updateWaveSim();
+  animateWaveSim();
+}
+
+function updateWaveSim() {
+  waveSimVf = parseFloat(document.getElementById('simVfSlider').value);
+  waveSimFf = parseFloat(document.getElementById('simFfSlider').value);
+  waveSimC  = parseFloat(document.getElementById('simCSlider').value);
+  document.getElementById('simVfVal').textContent = waveSimVf.toFixed(2);
+  document.getElementById('simFfVal').textContent = waveSimFf.toFixed(1) + ' Hz';
+  document.getElementById('simCVal').textContent = waveSimC;
+  wsSrcVX = waveSimVf * waveSimC;
+
+  // Compute perceived frequencies
+  const c = waveSimC;
+  const vf = waveSimVf * c;
+  const foFront = vf < c ? (waveSimFf * c / (c - vf)).toFixed(2) : '∞';
+  const foBack  = (waveSimFf * c / (c + vf)).toFixed(2);
+  document.getElementById('simFoFront').textContent = foFront + ' Hz';
+  document.getElementById('simFoBack').textContent  = foBack  + ' Hz';
+}
+
+function toggleWaveSim() {
+  waveSimRunning = !waveSimRunning;
+  document.getElementById('waveSimBtn').textContent = waveSimRunning ? '⏸ Pausar' : '▶ Reanudar';
+  if (waveSimRunning) animateWaveSim();
+}
+
+function resetWaveSim() {
+  wsWaves.length = 0;
+  waveSimT = 0;
+  wsSrcX = 185; wsSrcY = 185;
+  waveSimRunning = true;
+  document.getElementById('waveSimBtn').textContent = '⏸ Pausar';
+  animateWaveSim();
+}
+
+function animateWaveSim() {
+  if (!waveSimRunning) return;
+  const c = document.getElementById('mainSimCanvas');
+  if (!c || currentPage !== 10) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const dt = 1/60;
+  const cSpeed = waveSimC;
+  const vf = waveSimVf * cSpeed;
+
+  // Emit new wave
+  const period = 1 / waveSimFf;
+  if (waveSimT % Math.round(60 * period) === 0) {
+    wsWaves.push({ x: wsSrcX, y: wsSrcY, r: 2, maxR: 200 });
+  }
+
+  // Move source
+  wsSrcX += vf * dt * 0.8;
+  if (wsSrcX > W + 20) wsSrcX = -20;
+
+  ctx.fillStyle = '#0d1b2a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,194,212,0.06)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // Waves
+  for (const w of wsWaves) {
+    w.r += cSpeed * dt * 0.8;
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,194,212,${Math.max(0, 0.7 - w.r / w.maxR)})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  wsWaves.splice(0, wsWaves.filter(w => w.r >= w.maxR).length);
+
+  // Source
+  ctx.beginPath();
+  ctx.arc(wsSrcX, wsSrcY, 8, 0, Math.PI * 2);
+  ctx.fillStyle = '#e91e8c';
+  ctx.fill();
+  ctx.shadowBlur = 15; ctx.shadowColor = '#e91e8c'; ctx.fill(); ctx.shadowBlur = 0;
+
+  // Mach cone if vf >= c
+  if (waveSimVf >= 1.0) {
+    const sinTheta = 1 / waveSimVf;
+    if (sinTheta <= 1) {
+      const theta = Math.asin(sinTheta);
+      const len = 180;
+      ctx.strokeStyle = '#f5c842';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(wsSrcX, wsSrcY);
+      ctx.lineTo(wsSrcX - len, wsSrcY - len * Math.tan(theta));
+      ctx.moveTo(wsSrcX, wsSrcY);
+      ctx.lineTo(wsSrcX - len, wsSrcY + len * Math.tan(theta));
+      ctx.stroke();
+      ctx.fillStyle = '#f5c842'; ctx.font = '11px monospace';
+      ctx.fillText(`M=${waveSimVf.toFixed(2)} θ=${(theta*180/Math.PI).toFixed(1)}°`, 10, 20);
+    }
+  }
+
+  // Labels
+  ctx.fillStyle = '#e91e8c'; ctx.font = 'bold 11px Space Mono, monospace';
+  ctx.fillText('● Fuente', wsSrcX + 12, wsSrcY - 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '9px monospace';
+  ctx.fillText(`vf/c = ${waveSimVf.toFixed(2)}`, W - 100, H - 10);
+
+  waveSimT++;
+  waveSimAF = requestAnimationFrame(animateWaveSim);
+}
+
+// Init first page canvases
+window.addEventListener('load', () => {
+  // Cover is page 0, nothing to init
+  document.getElementById('page-indicator').textContent = '1 / 11';
+});
+</script>
+</body>
+</html>
